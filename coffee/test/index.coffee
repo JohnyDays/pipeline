@@ -1,4 +1,4 @@
-through = require('through2')
+through = require('through2').obj
 _ = require('lodash')
 _.isStream = require('isStream')
 pipe = require('../../index.js')
@@ -11,15 +11,14 @@ describe "Pipeline", ->
   it "Creates a pipeline from a source stream and an object describing the pipeline", ->
     
     source = through()
+    pipes = pipe  source,
 
-    pipes = pipe source,
+            step1:through()
 
-                    step1:through()
+            step2:through()  
 
-                    step2:through()  
-
-                    step3:through()
-
+            step3:through()
+    
     _.isStream pipes.step1
      .should.be.ok
     
@@ -54,15 +53,16 @@ describe "Pipeline", ->
 
     source = through()
 
-    pipes = pipe source,
+    pipes = pipe    source,
                        
-                    step1:  through()
-                    step2:  through()
-                    branch: 
-                      step1:through()
-                      step2:through()
-                    step3:  through()
-
+            step1:  through()
+            step2:  through()
+            branch: 
+              step1:through()
+              step2:through()
+            step3:  through()
+    a = through()
+    pipes.step1.pipe(a)
 
     pipes.source      .pipeline.startAggregatingData()
     pipes.step1       .pipeline.startAggregatingData()
@@ -98,19 +98,21 @@ describe "Pipeline", ->
 
     source = through()
 
-    pipes = pipe source,
-                 step1:through()
-                 step2:->through()
-                 branch:
-                  step1:through()
-                 step3:->through()
-                 step4:(source, pipeline_object)-> event_stream.merge(@step1, @branch.step1)
-
+    pipes = pipe   source,
+           step1:  through()
+           step2:->through()
+           branch:
+            step1: through()
+           step3:->through()
+           step4:(source, pipeline_object)-> event_stream.merge(@step1, @branch.step1)
+           step5:  through()
 
     pipes.step4.pipeline.startAggregatingData()
 
     source.emit('data','a')
     
     # Should get piped data from step1, branch.step1 and itself
-    pipes.step4.pipeline.getAggregatedData().length.should.equal 3
-
+    _.isEqual(
+      pipes.step4.pipeline.getAggregatedData(),
+      ['a','a','a']
+    ).should.be.ok

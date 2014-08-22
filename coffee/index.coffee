@@ -46,10 +46,11 @@ Flow = (source, pipe)->
 # Appends itself to source/piped streams, as an entry point for Pipeline functionality.
 # Usually appends to **stream**.pipeline object
 class PipelineStreamObject extends EventEmitter
-  constructor:(@stream)->
+
+  constructor:(@parentStream)->
     super(arguments)
-    @stream.on 'data',(data) => @emit('data',data)
-    @stream.belongsToAPipeline = true
+    @parentStream.on 'data',(data) => @emit('data',data)
+    @parentStream.belongsToAPipeline = true
 
   aggregate:(data)->
     @aggregatedData ?= []
