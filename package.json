@@ -1,0 +1,36 @@
+{
+  "name": "pipeline",
+  "version": "1.0.0",
+  "description": "Sewage should be pleasant",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --compilers coffee:coffee-script/register coffee/test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JohnyDays/pipeline"
+  },
+  "keywords": [
+    "pipeline",
+    "stream",
+    "streaming",
+    "build",
+    "neverending",
+    "sewage"
+  ],
+  "author": "JohnyDays",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JohnyDays/pipeline/issues"
+  },
+  "homepage": "https://github.com/JohnyDays/pipeline",
+  "dependencies": {
+    "coffee-script": "~1.7.1",
+    "through2": "~0.6.1",
+    "event-stream": "~3.1.7",
+    "isstream": "~0.1.0",
+    "lodash": "~2.4.1",
+    "mocha": "~1.21.4",
+    "should": "~4.0.4"
+  }
+}
