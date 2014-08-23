@@ -18,7 +18,7 @@ describe "Pipeline", ->
             step2:through()  
 
             step3:through()
-    
+
     _.isStream pipes.step1
      .should.be.ok
     
@@ -104,7 +104,7 @@ describe "Pipeline", ->
            branch:
             step1: through()
            step3:->through()
-           step4:(source, pipeline_object)-> event_stream.merge(@step1, @branch.step1)
+           step4:(source, previous_stream, pipeline_object)-> event_stream.merge(@step1, @branch.step1)
            step5:  through()
 
     pipes.step4.pipeline.startAggregatingData()

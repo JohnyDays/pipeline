@@ -22,14 +22,14 @@ Pipeline = (source, pipeline_object)->
 
   previous_stream = source
 
-  for key,value of pipeline_object
+  for key,value of pipeline_object when pipeline_object.hasOwnProperty(key)
     
     if isStream(value)
       result[key] = Flow(previous_stream, value)
       previous_stream = result[key]
 
     else if _.isFunction(value)
-      stream_to_pipe = value.apply(result,[source,pipeline_object])
+      stream_to_pipe = value.apply(result,[source,previous_stream,pipeline_object])
       result[key] = Flow(previous_stream, stream_to_pipe)
       previous_stream = result[key]
 
