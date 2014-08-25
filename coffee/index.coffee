@@ -11,55 +11,119 @@ EventEmitter = require('events').EventEmitter
 isStream = require('isstream')
 _ = require('lodash')
 
+
 # Pipeline entry point
-# Receives a source stream and an object describing the pipeline
-Pipeline = (source, pipeline_object)->
-
-  result = {}
-  
-  source.pipeline = new PipelineStreamObject(source)
-  result['source'] = source
-
-  previous_stream = source
-
-  for key,value of pipeline_object when pipeline_object.hasOwnProperty(key)
+# Receives an object whose keys are the pipes in the pipelines(must be streams)
+class Pipeline
+  constructor:(streams={})->
     
-    if isStream(value)
-      result[key] = Flow(previous_stream, value)
-      previous_stream = result[key]
+    @pipes = {}
+    @_internal_pipe_array = []
+    @_isPipeline = true
+    @add(streams)
 
-    else if _.isFunction(value)
-      stream_to_pipe = value.apply(result,[source,previous_stream,pipeline_object])
-      result[key] = Flow(previous_stream, stream_to_pipe)
-      previous_stream = result[key]
+  # Adds any number of pipes
+  add:(pipes)->
+    for key,value of pipes when pipes.hasOwnProperty(key)
+      if _.isStream(value)
+        @addSingle
+          name:key
+          stream:value
+      else if _.isFunction(value)
+        @addSingle
+          name:key
+          stream:value.apply(@, [@pipes])
+      else if _.isObject(value)
+        @addPipeline value
+      else
+        throw new Error("Pipeline accepts streams, functions and objects as values only, key #{key} was none of those")
 
-    else if _.isObject(value)
-      result[key] = Pipeline(previous_stream, value)
+    return @
+    
+  # Adds a single pipe
+  addSingle:({name,stream})->
+    
+    if !isStream(stream)
+      throw new Error("Pipe #{name} must be a stream")
 
-  return result
+    if @_internal_pipe_array.length is 0
+      @_internal_pipe_array.push name:name, stream:stream
+      @pipes[name] = stream
+      return stream
+    
+    if !isWritable(stream)
+      throw new Error("Pipe #{name} must be a writable stream")
+    
+    [..., last_pipe] = @_internal_pipe_array
 
-Flow = (source, pipe)->
-  source.pipe pipe
-  pipe.pipeline = new PipelineStreamObject(pipe)
-  return pipe 
+    if !isReadable(last_pipe.stream)
+      throw new Error("Pipe #{last_pipe.name} must be a readable stream to pipe into #{name}")
 
-# Appends itself to source/piped streams, as an entry point for Pipeline functionality.
-# Usually appends to **stream**.pipeline object
-class PipelineStreamObject extends EventEmitter
+    console.log "Piping from #{last_pipe.name} to #{name}"
+    pipe from:last_pipe.stream, to:stream
+    
+    @_internal_pipe_array.push name:name, stream:stream
+    @pipes[name] = stream
+    return @
 
-  constructor:(@parentStream)->
-    super(arguments)
-    @parentStream.on 'data',(data) => @emit('data',data)
-    @parentStream.belongsToAPipeline = true
 
-  aggregate:(data)->
-    @aggregatedData ?= []
-    @aggregatedData.push data
-  
-  startAggregatingData:()-> @on('data',@aggregate)
+  # Adds a branching pipeline
+  addPipeline:(pipes)->
+    
+    pipeline = new Pipeline()
+    
+    [...,last_pipe] = @_internal_pipe_array
+    
+    if last_pipe
+      pipeline.add("__pipeline_source_stream":last_pipe)
 
-  stopAggregatingData:()-> @off('data',@aggregate)
+    pipeline.add pipes
 
-  getAggregatedData:()-> @aggregatedData
+    return @
+
+
+  # Removes any number of pipes from the pipeline and patches the leaks
+  remove:(names = [])->
+    for name in names
+      @removeSingle(name)
+
+    return @
+
+  # Removes a single pipe from the pipeline and patches the leaks
+  removeSingle:(name)->
+    
+    index = _.findIndex(@_internal_pipe_array, (item)-> item.name is name )
+    
+    pipe_to_remove = @_internal_pipe_array[index]
+
+    pipe_before = @_internal_pipe_array[index-1]
+    
+    pipe_after = @_internal_pipe_array[index+1]
+
+    if pipe_before?.stream?
+      pipe_before.stream.unpipe pipe_to_remove
+
+    if pipe_after?.stream?
+      pipe_to_remove.stream.unpipe pipe_after
+
+    if pipe_before?.stream? and pipe_after?.stream?
+      pipe from:pipe_before, to:pipe_after
+
+    # TODO: Rearrange pipes in order to not have a sparse index
+    delete @_internal_pipe_array[index]
+    delete @pipes[name]
+
+    return @
+
+  emit:-> @_internal_pipe_array[0].stream.emit(arguments...)
 
 module.exports = Pipeline
+
+#### Helper methods
+
+pipe = ({from, to})-> from.pipe to
+
+# Shortcuts
+isReadable = isStream.isReadable
+isWritable = isStream.isWritable
+isDuplex = (stream)-> return isWritable(stream) and isReadable(stream)
