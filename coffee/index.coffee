@@ -8,9 +8,9 @@
 
 class Stream extends require('through2').obj
 EventEmitter =       require('events').EventEmitter
-isStream =           require('isstream')
-_ =                  require('lodash')
-_.isStream = isStream
+isStream     =       require('isstream')
+_            =       require('lodash')
+_.isStream   =       isStream
 
 # Pipeline entry point
 # Receives an object whose keys are the pipes in the pipelines(must be streams)
