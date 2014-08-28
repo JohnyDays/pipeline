@@ -10,7 +10,7 @@ class Stream extends require('through2').obj
 EventEmitter =       require('events').EventEmitter
 isStream =           require('isstream')
 _ =                  require('lodash')
-
+_.isStream = isStream
 
 # Pipeline entry point
 # Receives an object whose keys are the pipes in the pipelines(must be streams)
@@ -28,20 +28,23 @@ class Pipeline
   # Adds any number of pipes
   add:(pipes)->
     for key,value of pipes when pipes.hasOwnProperty(key)
-      if      _.isStream(value)
-        @addSingle
-          name:key
-          stream:value
+      if      isStream(value)
+        @addSingle name:key, stream:value
 
       else if _.isFunction(value)
-        @addSingle
-          name:key
-          stream:value.apply(@, [@pipes])
+        thing = value.apply(@, [@pipes])
+        
+        if         isStream(thing)
+          @addSingle   name:key, stream:thing
+        
+        else if    _.isObject(thing)
+          @addPipeline name:key, object:thing
+        
+        else if    _.isBoolean(thing)
+          @options[key] = thing
 
       else if _.isObject(value)
-        @addPipeline 
-          name:key
-          object:value
+        @addPipeline   name:key, object:value
           
       else if _.isBoolean(value)
         @options[key] = value
