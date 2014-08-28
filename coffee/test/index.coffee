@@ -72,26 +72,21 @@ describe "Pipeline", ->
 
     pipeline.write 5
 
-  it "Supports write, emit and end aliases for first stream", (done)->
+  it "Supports write, emit and end aliases", (done)->
 
-    wait = _.after 3, done
+    wait = _.after 2, done
 
     pipeline.pipes.source.on 'data', (data)->
-      data.should.equal 6
+      data.should.equal 1
       wait()
 
-    pipeline.write 6
+    pipeline.write 1
 
-    pipeline.pipes.source.on 'test_event', (data)->
-      data.should.equal 7
-      wait()
+    pipeline.in.on 'end', -> wait() 
     
-    pipeline.emit('test_event', 7)
-    
-    pipeline.pipes.source.on 'end', ->
-      wait()
-
     pipeline.end()
+
+
 
   it "Supports special options defined as booleans", ->
 
@@ -99,3 +94,4 @@ describe "Pipeline", ->
       test_option:true
 
     pipeline.options.test_option.should.equal true    
+

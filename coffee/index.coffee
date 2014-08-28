@@ -6,7 +6,7 @@
 # *isStream
 # *lodash
 
-through = require('through2')
+through = require('through2').obj
 EventEmitter = require('events').EventEmitter
 isStream = require('isstream')
 _ = require('lodash')
@@ -16,10 +16,12 @@ _ = require('lodash')
 # Receives an object whose keys are the pipes in the pipelines(must be streams)
 class Pipeline
   constructor:(streams={})->
-    
+    @in = through()
+    @out = through()
     @pipes = {}
     @options = {}
-    @_internal_pipe_array = []
+    @_internal_pipe_array = [name:"__pipeline_in_stream", stream:@in]
+    @pipes["__pipeline_in_stream"] = @in
     @_isPipeline = true
     @add(streams)
 
@@ -51,11 +53,6 @@ class Pipeline
     if !isStream(stream)
       throw new Error("Pipe #{name} must be a stream")
 
-    if @_internal_pipe_array.length is 0
-      @_internal_pipe_array.push name:name, stream:stream
-      @pipes[name] = stream
-      return stream
-    
     if !isWritable(stream)
       throw new Error("Pipe #{name} must be a writable stream")
     
@@ -65,7 +62,11 @@ class Pipeline
       throw new Error("Pipe #{last_pipe.name} must be a readable stream to pipe into #{name}")
 
     pipe from:last_pipe.stream, to:stream
-    
+
+    if isReadable(stream)
+      unpipe from:last_pipe.stream, to:@out
+      pipe from:stream, to:@out
+
     @_internal_pipe_array.push name:name, stream:stream
     @pipes[name] = stream
     return @
@@ -134,6 +135,7 @@ module.exports = Pipeline
 #### Helper methods
 
 pipe = ({from, to})-> from.pipe to
+unpipe = ({from, to})-> from.unpipe to
 
 # Shortcuts
 isReadable = isStream.isReadable
