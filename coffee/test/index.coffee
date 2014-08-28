@@ -47,7 +47,7 @@ describe "Pipeline", ->
     pipeline.write 3
 
 
-  it "Supports functions in the description", (done)->
+  it "Supports functions", (done)->
 
     pipeline.add
       branch:
@@ -82,7 +82,7 @@ describe "Pipeline", ->
 
     pipeline.write 1
 
-    pipeline.in.on 'end', -> wait() 
+    pipeline.out.on 'finish', -> wait() 
     
     pipeline.end()
 
@@ -94,4 +94,3 @@ describe "Pipeline", ->
       test_option:true
 
     pipeline.options.test_option.should.equal true    
-

@@ -125,9 +125,9 @@ class Pipeline
 
     return @
 
-  emit:-> @_internal_pipe_array[0].stream.emit(arguments...)
-  write:-> @_internal_pipe_array[0].stream.write(arguments...)
-  end:-> @_internal_pipe_array[0].stream.end(arguments...)
+  emit:-> @in.emit(arguments...)
+  write:-> @in.write(arguments...)
+  end:-> @in.end(arguments...)
 
 
 module.exports = Pipeline

@@ -4,7 +4,7 @@
   "description": "Sewage should be pleasant",
   "main": "index.js",
   "scripts": {
-    "test": "mocha --compilers coffee:coffee-script/register coffee/test"
+    "test": "mocha -w coffee --compilers coffee:coffee-script/register coffee/test"
   },
   "repository": {
     "type": "git",
