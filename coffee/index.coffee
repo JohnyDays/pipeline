@@ -87,8 +87,11 @@ class Pipeline
 
   # Removes any number of pipes from the pipeline and patches the leaks
   remove:(names = [])->
-    for name in names
-      @removeSingle(name)
+    if typeof names is String
+      @removeSingle names
+    else if typeof names is Array
+      for name in names
+        @removeSingle(name)
 
     return @
 

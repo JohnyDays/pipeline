@@ -16,20 +16,20 @@ describe "Pipeline", ->
   it "Creates a pipeline", (done)->
     
     pipeline.pipes.step2.on 'data', (data)->
-      data.should.equal 4
+      data.should.equal 1
       done()
 
-    pipeline.write 4
+    pipeline.write 1
 
   it "Adds pipes at any time", (done)->
     
     pipeline.add step3:through()
 
     pipeline.pipes.step3.on 'data', (data)->
-      data.should.equal 4
+      data.should.equal 2
       done()
     
-    pipeline.write 4
+    pipeline.write 2
 
   it "Supports objects, and creates a branching pipeline from them", (done)->
 
@@ -41,14 +41,14 @@ describe "Pipeline", ->
     branch = pipeline.pipes.branch
 
     branch.pipes.step1.on 'data', (data)->
-      data.should.equal 5
+      data.should.equal 3
       done()
 
-    pipeline.write 5
+    pipeline.write 3
 
 
   it "Supports functions in the description", (done)->
-    
+
     pipeline.add
       branch:
         step1:-> through()
@@ -57,6 +57,16 @@ describe "Pipeline", ->
     branch = pipeline.pipes.branch
 
     branch.pipes.step1.on 'data', (data)->
+      data.should.equal 4
+      done()
+
+    pipeline.write 4
+
+  it "Can remove any step and automatically patch the leak", (done)->
+
+    pipeline.remove("step1")
+
+    pipeline.pipes.step2.on 'data', (data)->
       data.should.equal 5
       done()
 
