@@ -16,38 +16,39 @@ _.isStream = isStream
 # Receives an object whose keys are the pipes in the pipelines(must be streams)
 class Pipeline
   constructor:(streams={})->
-    @in =  new Stream()
-    @out = new Stream()
-    @pipes =   {}
-    @options = {}
-    @__pipelineInternalPipes = [name:"__pipeline_in_stream", stream:@in]
-    @pipes["__pipeline_in_stream"] = @in
-    @_isPipeline = true
+    @_isPipeline                 =   true
+    @in                          =   new Stream()
+    @out                         =   new Stream()
+    @pipes                       =   {}
+    @pipes["__pipelineInStream"] =   @in
+    @options                     =   {}
+    @__pipelineInternalPipes     =   [name:"__pipelineInStream", stream:@in]
+    
     @add(streams)
 
   # Adds any number of pipes
   add:(pipes)->
     for key,value of pipes when pipes.hasOwnProperty(key)
       if      isStream(value)
-        @addSingle name:key, stream:value
+              @addSingle name:key, stream:value
 
       else if _.isFunction(value)
-        thing = value.apply(@, [@pipes])
+        functionResult = value.apply(@, [@pipes])
         
-        if         isStream(thing)
-          @addSingle   name:key, stream:thing
+        if         isStream(functionResult)
+                   @addSingle   name:key, stream:functionResult
         
-        else if    _.isObject(thing)
-          @addPipeline name:key, object:thing
+        else if    _.isObject(functionResult)
+                  @addPipeline name:key, object:functionResult
         
-        else if    _.isBoolean(thing)
-          @options[key] = thing
+        else if    _.isBoolean(functionResult)
+                  @options[key] = functionResult
 
       else if _.isObject(value)
-        @addPipeline   name:key, object:value
+              @addPipeline   name:key, object:value
           
       else if _.isBoolean(value)
-        @options[key] = value
+              @options[key] = value
       else
         throw new Error("Pipeline accepts streams, functions and objects as values only, key #{key} was none of those")
 
@@ -56,16 +57,13 @@ class Pipeline
   # Adds a single pipe
   addSingle:({name,stream})->
     
-    if !isStream(stream)
-      throw new Error("Pipe #{name} must be a stream")
+    throw new Error("Pipe #{name} must be a stream") if !isStream(stream)
 
-    if !isWritable(stream)
-      throw new Error("Pipe #{name} must be a writable stream")
+    throw new Error("Pipe #{name} must be a writable stream") if !isWritable(stream)
     
     [..., last_pipe] = @__pipelineInternalPipes
 
-    if !isReadable(last_pipe.stream)
-      throw new Error("Pipe #{last_pipe.name} must be a readable stream to pipe into #{name}")
+    throw new Error("Pipe #{last_pipe.name} must be a readable stream to pipe into #{name}") if !isReadable(last_pipe.stream)
 
     pipe from:last_pipe.stream, to:stream
 
@@ -99,8 +97,10 @@ class Pipeline
 
   # Removes any number of pipes from the pipeline and patches the leaks
   remove:(names = [])->
+    
     if typeof names is String
       @removeSingle names
+    
     else if typeof names is Array
       for name in names
         @removeSingle(name)
@@ -110,22 +110,23 @@ class Pipeline
   # Removes a single pipe from the pipeline and patches the leaks
   removeSingle:(name)->
     
-    index = _.findIndex(@__pipelineInternalPipes, (item)-> item.name is name )
+    index = _.findIndex @__pipelineInternalPipes,         (item)-> item.name is name
     
-    pipe_to_remove = @__pipelineInternalPipes[index]
+    pipe_to_remove =    @__pipelineInternalPipes[index]   ?.stream
 
-    pipe_before =    @__pipelineInternalPipes[index-1]
+    pipe_before =       @__pipelineInternalPipes[index-1] ?.stream
     
-    pipe_after =     @__pipelineInternalPipes[index+1]
+    pipe_after =        @__pipelineInternalPipes[index+1] ?.stream
 
-    if pipe_before?.stream?
-      pipe_before.stream.unpipe    pipe_to_remove
+    if pipe_before?
+      pipe_before.unpipe    pipe_to_remove
 
-    if pipe_after?.stream?
-      pipe_to_remove.stream.unpipe pipe_after
+    if pipe_after?
+      pipe_to_remove.unpipe pipe_after
 
-    if pipe_before?.stream? and pipe_after?.stream?
-      pipe from:pipe_before, to:pipe_after
+    if pipe_before? and pipe_after?
+      pipe  from: pipe_before 
+            to:   pipe_after.stream
 
     # TODO: Rearrange pipes in order to not have a sparse index
     delete @__pipelineInternalPipes[index]
@@ -133,9 +134,9 @@ class Pipeline
 
     return @
 
-  emit:->  @in.emit  arguments...
+  emit: -> @in.emit  arguments...
   write:-> @in.write arguments...
-  end:->   @in.end   arguments...
+  end:  -> @in.end   arguments...
 
   getParentPipeline:-> @__pipelineParent
 
@@ -143,7 +144,7 @@ module.exports = Pipeline
 
 #### Helper methods
 
-pipe =   ({from, to})-> from.pipe   to
+pipe   = ({from, to})-> from.pipe   to
 unpipe = ({from, to})-> from.unpipe to
 
 # Shortcuts
