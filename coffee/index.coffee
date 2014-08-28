@@ -34,7 +34,9 @@ class Pipeline
           name:key
           stream:value.apply(@, [@pipes])
       else if _.isObject(value)
-        @addPipeline value
+        @addPipeline 
+          name:key
+          object:value
       else
         throw new Error("Pipeline accepts streams, functions and objects as values only, key #{key} was none of those")
 
@@ -59,7 +61,6 @@ class Pipeline
     if !isReadable(last_pipe.stream)
       throw new Error("Pipe #{last_pipe.name} must be a readable stream to pipe into #{name}")
 
-    console.log "Piping from #{last_pipe.name} to #{name}"
     pipe from:last_pipe.stream, to:stream
     
     @_internal_pipe_array.push name:name, stream:stream
@@ -68,16 +69,18 @@ class Pipeline
 
 
   # Adds a branching pipeline
-  addPipeline:(pipes)->
+  addPipeline:({name, object})->
     
     pipeline = new Pipeline()
     
     [...,last_pipe] = @_internal_pipe_array
     
     if last_pipe
-      pipeline.add("__pipeline_source_stream":last_pipe)
+      pipeline.add("__pipeline_source_stream":last_pipe.stream)
 
-    pipeline.add pipes
+    pipeline.add object
+    
+    @pipes[name] = pipeline
 
     return @
 
@@ -116,6 +119,7 @@ class Pipeline
     return @
 
   emit:-> @_internal_pipe_array[0].stream.emit(arguments...)
+  write:-> @_internal_pipe_array[0].stream.write(arguments...)
 
 module.exports = Pipeline
 
