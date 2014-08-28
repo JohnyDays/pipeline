@@ -72,14 +72,22 @@ describe "Pipeline", ->
 
     pipeline.write 5
 
-  it "Supports write, emit and end aliases", (done)->
+  it "Supports write, pipe, emit, end aliases", (done)->
 
-    wait = _.after 2, done
+    wait = _.after 3, done
+
+    stream = new Stream()
 
     pipeline.pipes.source.on 'data', (data)->
       data.should.equal 1
       wait()
 
+    pipeline.pipe stream 
+
+    stream.on 'data', (data)->
+      data.should.equal 1
+      wait()
+      
     pipeline.write 1
 
     pipeline.out.on 'finish', -> wait() 
