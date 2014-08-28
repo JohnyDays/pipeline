@@ -18,6 +18,7 @@ class Pipeline
   constructor:(streams={})->
     
     @pipes = {}
+    @options = {}
     @_internal_pipe_array = []
     @_isPipeline = true
     @add(streams)
@@ -37,6 +38,8 @@ class Pipeline
         @addPipeline 
           name:key
           object:value
+      else if _.isBoolean(value)
+        @options[key] = value
       else
         throw new Error("Pipeline accepts streams, functions and objects as values only, key #{key} was none of those")
 
@@ -123,6 +126,8 @@ class Pipeline
 
   emit:-> @_internal_pipe_array[0].stream.emit(arguments...)
   write:-> @_internal_pipe_array[0].stream.write(arguments...)
+  end:-> @_internal_pipe_array[0].stream.end(arguments...)
+
 
 module.exports = Pipeline
 
