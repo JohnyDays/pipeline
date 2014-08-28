@@ -1,4 +1,4 @@
-through = require('through2').obj
+class Stream extends require('through2').obj
 _ = require('lodash')
 _.isStream = require('isStream')
 Pipeline = require('../../index.js')
@@ -9,9 +9,9 @@ describe "Pipeline", ->
   pipeline = null 
   beforeEach ->
     pipeline = new Pipeline
-      source: through()
-      step1:  through()
-      step2:  through()
+      source:  new Stream()
+      step1:   new Stream()
+      step2:   new Stream()
 
   it "Creates a pipeline", (done)->
     
@@ -23,7 +23,7 @@ describe "Pipeline", ->
 
   it "Adds pipes at any time", (done)->
     
-    pipeline.add step3:through()
+    pipeline.add step3:new Stream()
 
     pipeline.pipes.step3.on 'data', (data)->
       data.should.equal 2
@@ -35,8 +35,8 @@ describe "Pipeline", ->
 
     pipeline.add 
       branch:
-        step1: through()
-        step2: through()
+        step1: new Stream()
+        step2: new Stream()
 
     branch = pipeline.pipes.branch
 
@@ -51,8 +51,8 @@ describe "Pipeline", ->
 
     pipeline.add
       branch:
-        step1:-> through()
-        step2:-> through()
+        step1:-> new Stream()
+        step2:-> new Stream()
 
     branch = pipeline.pipes.branch
 

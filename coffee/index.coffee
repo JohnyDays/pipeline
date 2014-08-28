@@ -6,21 +6,21 @@
 # *isStream
 # *lodash
 
-through = require('through2').obj
-EventEmitter = require('events').EventEmitter
-isStream = require('isstream')
-_ = require('lodash')
+class Stream extends require('through2').obj
+EventEmitter =       require('events').EventEmitter
+isStream =           require('isstream')
+_ =                  require('lodash')
 
 
 # Pipeline entry point
 # Receives an object whose keys are the pipes in the pipelines(must be streams)
 class Pipeline
   constructor:(streams={})->
-    @in = through()
-    @out = through()
-    @pipes = {}
+    @in =  new Stream()
+    @out = new Stream()
+    @pipes =   {}
     @options = {}
-    @_internal_pipe_array = [name:"__pipeline_in_stream", stream:@in]
+    @__pipelineInternalPipes = [name:"__pipeline_in_stream", stream:@in]
     @pipes["__pipeline_in_stream"] = @in
     @_isPipeline = true
     @add(streams)
@@ -28,18 +28,21 @@ class Pipeline
   # Adds any number of pipes
   add:(pipes)->
     for key,value of pipes when pipes.hasOwnProperty(key)
-      if _.isStream(value)
+      if      _.isStream(value)
         @addSingle
           name:key
           stream:value
+
       else if _.isFunction(value)
         @addSingle
           name:key
           stream:value.apply(@, [@pipes])
+
       else if _.isObject(value)
         @addPipeline 
           name:key
           object:value
+          
       else if _.isBoolean(value)
         @options[key] = value
       else
@@ -56,7 +59,7 @@ class Pipeline
     if !isWritable(stream)
       throw new Error("Pipe #{name} must be a writable stream")
     
-    [..., last_pipe] = @_internal_pipe_array
+    [..., last_pipe] = @__pipelineInternalPipes
 
     if !isReadable(last_pipe.stream)
       throw new Error("Pipe #{last_pipe.name} must be a readable stream to pipe into #{name}")
@@ -67,7 +70,7 @@ class Pipeline
       unpipe from:last_pipe.stream, to:@out
       pipe from:stream, to:@out
 
-    @_internal_pipe_array.push name:name, stream:stream
+    @__pipelineInternalPipes.push name:name, stream:stream
     @pipes[name] = stream
     return @
 
@@ -77,14 +80,16 @@ class Pipeline
     
     pipeline = new Pipeline()
     
-    [...,last_pipe] = @_internal_pipe_array
+    [...,last_pipe] = @__pipelineInternalPipes
     
     if last_pipe
-      pipeline.add("__pipeline_source_stream":last_pipe.stream)
+      pipeline.add("__pipelineSourceStream":last_pipe.stream)
 
     pipeline.add object
     
     @pipes[name] = pipeline
+
+    pipeline["__pipelineParent"] = @
 
     return @
 
@@ -102,16 +107,16 @@ class Pipeline
   # Removes a single pipe from the pipeline and patches the leaks
   removeSingle:(name)->
     
-    index = _.findIndex(@_internal_pipe_array, (item)-> item.name is name )
+    index = _.findIndex(@__pipelineInternalPipes, (item)-> item.name is name )
     
-    pipe_to_remove = @_internal_pipe_array[index]
+    pipe_to_remove = @__pipelineInternalPipes[index]
 
-    pipe_before = @_internal_pipe_array[index-1]
+    pipe_before =    @__pipelineInternalPipes[index-1]
     
-    pipe_after = @_internal_pipe_array[index+1]
+    pipe_after =     @__pipelineInternalPipes[index+1]
 
     if pipe_before?.stream?
-      pipe_before.stream.unpipe pipe_to_remove
+      pipe_before.stream.unpipe    pipe_to_remove
 
     if pipe_after?.stream?
       pipe_to_remove.stream.unpipe pipe_after
@@ -120,21 +125,22 @@ class Pipeline
       pipe from:pipe_before, to:pipe_after
 
     # TODO: Rearrange pipes in order to not have a sparse index
-    delete @_internal_pipe_array[index]
+    delete @__pipelineInternalPipes[index]
     delete @pipes[name]
 
     return @
 
-  emit:-> @in.emit(arguments...)
-  write:-> @in.write(arguments...)
-  end:-> @in.end(arguments...)
+  emit:->  @in.emit  arguments...
+  write:-> @in.write arguments...
+  end:->   @in.end   arguments...
 
+  getParentPipeline:-> @__pipelineParent
 
 module.exports = Pipeline
 
 #### Helper methods
 
-pipe = ({from, to})-> from.pipe to
+pipe =   ({from, to})-> from.pipe   to
 unpipe = ({from, to})-> from.unpipe to
 
 # Shortcuts
