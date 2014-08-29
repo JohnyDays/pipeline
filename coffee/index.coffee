@@ -15,9 +15,10 @@ class Stream extends through.ctor(objectMode: true, highWaterMark: 16)
 
 # Reserved Keywords:
 # * options
-# * pipeUpstream
+
 # Pipeline entry point
 # Receives an object whose keys are the pipes in the pipelines(must be streams)
+# Also accepts the reserved keywords above
 class Pipeline
 
   constructor:(streams={})->
@@ -208,7 +209,7 @@ class Pipeline
   debugMode:(format)->
 
     if !format? or format.constructor isnt Function
-      format =         (data)-> data.toString()
+      format = (data)-> data.toString()
 
     @in.pipe through.obj  {}, (data, encoding, callback) => 
       callback(null, data)
