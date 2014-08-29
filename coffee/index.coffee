@@ -31,26 +31,26 @@ class Pipeline
   # Adds any number of pipes
   add:(pipes)->
     for key,value of pipes when pipes.hasOwnProperty(key)
-      if      isStream(value)
-              @addSingle name:key, stream:value
+      if isStream(value)
+          @addSingle name:key, stream:value
 
       else if _.isFunction(value)
         functionResult = value.apply(@, [@pipes])
         
-        if      isStream(functionResult)
-                @addSingle   name:key, stream:functionResult
+        if isStream(functionResult)
+          @addSingle   name:key, stream:functionResult
         
         else if _.isObject(functionResult)
-                @addPipeline name:key, object:functionResult
+          @addPipeline name:key, object:functionResult
         
         else if _.isBoolean(functionResult)
-                @options[key] = functionResult
+          @options[key] = functionResult
 
       else if _.isObject(value)
-              @addPipeline   name:key, object:value
+          @addPipeline   name:key, object:value
           
       else if _.isBoolean(value)
-              @options[key] = value
+          @options[key] = value
       else
         throw new Error("Pipeline accepts streams, functions and objects as values only, key #{key} was none of those")
 
@@ -141,6 +141,10 @@ class Pipeline
   write:-> @in.write arguments...
   end:  -> @in.end   arguments...
   pipe: -> @out.pipe arguments...
+  _read: -> @out._read arguments...
+  _write: -> @in._write arguments...
+  _transform: -> @in._transform arguments...
+  _flush: -> @in._flush arguments...
 
   getParentPipeline:-> @__pipelineParent
 
