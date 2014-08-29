@@ -30,7 +30,10 @@ class Pipeline
     @__pipelineInternalPipes     =   [name:"__pipelineInStream", stream:@in]
     @options                     =   streams.options || {}
     delete                           streams.options
+    
     @add(streams)
+    
+    @debugMode(@options.debugMode) if @options.debugMode
 
   # Adds any number of pipes
   add:(pipes,options = {})->
@@ -92,6 +95,8 @@ class Pipeline
   # Adds a single pipe
   _addStream:({name, stream, options})->
     
+    stream.__pipelineName = name
+
     lastPipe = @getLastPipe()
 
     throw new Error("Pipe #{name} must be a stream")          unless isStream(stream)
@@ -115,7 +120,7 @@ class Pipeline
   # Adds a branching pipeline
   _addPipeline:({name, pipelineDescriptorObject})->
 
-    childPipeline = new Pipeline(pipelineDescriptorObject)    
+    childPipeline = new Pipeline(pipelineDescriptorObject)
     
     if childPipeline.options.dontFork
 
@@ -133,9 +138,10 @@ class Pipeline
 
       lastPipe = @getLastPipe()  
       childPipeline.addSource name:"__pipelineParentSource", stream:lastPipe.stream    
-    
-    @pipes[name] = childPipeline
+      
+    @pipes[name]                      = childPipeline
     childPipeline["__pipelineParent"] = @
+    childPipeline["__pipelineName"]   = name
     return @
 
   removeSource:(name)->
@@ -192,6 +198,10 @@ class Pipeline
   getInnerPipes:     -> _.where @__pipelineInternalPipes, (pipe)-> pipe.name[0..9] isnt "__pipeline"
   get:(name)         -> @pipes[name]
 
+  debugMode:         (format)->
+    format ?= (data)-> data.toString()
+    @out.on 'data',    (data)=> console.log "#{format(data)} coming out of #{@__pipelineName or 'Pipeline'}"
+    @in.on 'data',     (data)=> console.log "#{format(data)} coming into   #{@__pipelineName or 'Pipeline'}"
 module.exports = Pipeline
 
 #### Helper methods

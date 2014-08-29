@@ -125,7 +125,8 @@ describe "Pipeline", ->
       branch:
         step1:    new Stream()
         step2:    new Stream()
-        dontFork: true
+        options:
+          dontFork: true
       after:      new StorageStream()
 
     pipeline.write 5
