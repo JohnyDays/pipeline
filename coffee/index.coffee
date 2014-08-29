@@ -15,10 +15,12 @@ _.isStream   =       isStream
 # Pipeline entry point
 # Receives an object whose keys are the pipes in the pipelines(must be streams)
 class Pipeline
+
   constructor:(streams={})->
+
     @_isPipeline                 =   true
-    @in                          =   new Stream()
-    @out                         =   new Stream()
+    (@in                         =   new Stream()).setMaxListeners 0
+    (@out                        =   new Stream()).setMaxListeners 0
     @pipes                       =   {}
     @pipes["__pipelineInStream"] =   @in
     @options                     =   {}
@@ -35,14 +37,14 @@ class Pipeline
       else if _.isFunction(value)
         functionResult = value.apply(@, [@pipes])
         
-        if         isStream(functionResult)
-                   @addSingle   name:key, stream:functionResult
+        if      isStream(functionResult)
+                @addSingle   name:key, stream:functionResult
         
-        else if    _.isObject(functionResult)
-                  @addPipeline name:key, object:functionResult
+        else if _.isObject(functionResult)
+                @addPipeline name:key, object:functionResult
         
-        else if    _.isBoolean(functionResult)
-                  @options[key] = functionResult
+        else if _.isBoolean(functionResult)
+                @options[key] = functionResult
 
       else if _.isObject(value)
               @addPipeline   name:key, object:value
@@ -57,13 +59,14 @@ class Pipeline
   # Adds a single pipe
   addSingle:({name,stream})->
     
-    throw new Error("Pipe #{name} must be a stream") if !isStream(stream)
+    throw new Error("Pipe #{name} must be a stream")          if !isStream(stream)
 
     throw new Error("Pipe #{name} must be a writable stream") if !isWritable(stream)
     
     [..., last_pipe] = @__pipelineInternalPipes
 
-    throw new Error("Pipe #{last_pipe.name} must be a readable stream to pipe into #{name}") if !isReadable(last_pipe.stream)
+    throw new Error("Pipe #{last_pipe.name} must be a 
+                       readable stream to pipe into #{name}") if !isReadable(last_pipe.stream)
 
     pipe from:last_pipe.stream, to:stream
 
