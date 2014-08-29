@@ -1,12 +1,24 @@
-class Stream extends require('through2').obj
+
+class Stream extends require('through2').ctor({ objectMode: true, highWaterMark: 16 })
 _ = require('lodash')
 _.isStream = require('isStream')
 Pipeline = require('../../index.js')
 should = require('should')
 event_stream = require('event-stream')
+
+# A stream that stores all the data that has passed through it, for testing
+class StorageStream extends Stream
+  constructor:->
+    super
+    @stored = []
+  _transform:(content, encoding, callback)->
+    callback(null,content)
+    @stored.push content
+
 describe "Pipeline", ->
   
   pipeline = null 
+
   beforeEach ->
     pipeline = new Pipeline
       source:  new Stream()
@@ -72,33 +84,61 @@ describe "Pipeline", ->
 
     pipeline.write 5
 
-  it "Supports write, pipe, emit, end aliases", (done)->
+  it "Supports write, pipe, emit, end aliases", (reallyDone)->
 
-    wait = _.after 3, done
+    done = _.after 3, reallyDone
 
     stream = new Stream()
 
     pipeline.pipes.source.on 'data', (data)->
       data.should.equal 1
-      wait()
+      done()
 
     pipeline.pipe stream 
 
     stream.on 'data', (data)->
       data.should.equal 1
-      wait()
+      done()
       
     pipeline.write 1
 
-    pipeline.out.on 'finish', -> wait() 
+    pipeline.out.on 'finish', -> done() 
     
     pipeline.end()
 
 
 
-  it "Supports special options defined as booleans", ->
+  it "Supports special options defined as booleans or in the options object", ->
 
     pipeline.add
       test_option:true
 
-    pipeline.options.test_option.should.equal true    
+    pipeline.options.test_option.should.equal true
+
+    pipeline = new Pipeline options: test_option:true
+    
+    pipeline.options.test_option.should.equal true
+
+  it "Supports non-forking branches", (done)->
+
+    pipeline.add
+      branch:
+        step1:    new Stream()
+        step2:    new Stream()
+        dontFork: true
+      after:      new StorageStream()
+
+    pipeline.write 5
+    
+    _.delay ->
+
+      pipeline.pipes.after.stored.should.eql [5]
+
+      pipeline.pipes.branch.write 5
+
+      _.delay ->
+
+        pipeline.pipes.after.stored.should.eql [5,5]
+        done()
+
+
