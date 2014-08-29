@@ -32,7 +32,7 @@ class Pipeline
     delete                           streams.options
     
     @add(streams)
-    
+
     @debugMode(@options.debugMode) if @options.debugMode
 
   # Adds any number of pipes
@@ -199,7 +199,8 @@ class Pipeline
   get:(name)         -> @pipes[name]
 
   debugMode:         (format)->
-    format ?= (data)-> data.toString()
+    if !format? or format.constructor isnt Function
+      format = (data)-> data.toString()
     @out.on 'data',    (data)=> console.log "#{format(data)} coming out of #{@__pipelineName or 'Pipeline'}"
     @in.on 'data',     (data)=> console.log "#{format(data)} coming into   #{@__pipelineName or 'Pipeline'}"
 module.exports = Pipeline
