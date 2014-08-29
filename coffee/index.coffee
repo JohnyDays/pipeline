@@ -10,7 +10,8 @@ EventEmitter =       require('events').EventEmitter
 isStream     =       require('isstream')
 _            =       require('lodash')
 _.isStream   =       isStream
-class Stream extends require('through2').ctor(objectMode: true, highWaterMark: 16)
+through      =       require('through2')
+class Stream extends through.ctor(objectMode: true, highWaterMark: 16)
 
 # Reserved Keywords:
 # * options
@@ -99,16 +100,19 @@ class Pipeline
 
     lastPipe = @getLastPipe()
 
-    throw new Error("Pipe #{name} must be a stream")          unless isStream(stream)
-    throw new Error("Pipe #{name} must be a writable stream") unless isWritable(stream)
+    throw new Error("Pipe #{name} must be a stream")                            unless isStream(stream)
+    throw new Error("Pipe #{name} must be a writable stream")                   unless isWritable(stream)
     throw new Error("Pipe #{lastPipe.name} must be a 
-                       readable stream to pipe into #{name}") unless isReadable(lastPipe.stream)
+                       readable stream to pipe into #{name}")                   unless isReadable(lastPipe.stream)
+    console.log "Warning: pipe #{name} isn't readable. This may lead to errors" unless isReadable(stream)
 
     pipe from:lastPipe.stream, to:stream unless options.breakUpstream
 
-    if isReadable(stream) and !options.breakDownstream
-        unpipe from:lastPipe.stream, to:@out
-        pipe from:stream, to:@out
+    if !options.breakDownstream
+      unpipe from:lastPipe.stream, to:@out
+      pipe   from:stream,          to:@out
+    else
+      unpipe from:lastPipe.stream, to:@out
 
     @__pipelineInternalPipes.push name:name, stream:stream
 
@@ -180,11 +184,11 @@ class Pipeline
     return @
 
   # Delegate stream related functions to in and out streams
-  emit:       -> @in  .emit       arguments...
-  on:         -> @in  .on         arguments...
   once:       -> @in  .once       arguments...
   write:      -> @in  .write      arguments...
   end:        -> @in  .end        arguments...
+  emit:       -> @out .emit       arguments...
+  on:         -> @out .on         arguments...
   pipe:       -> @out .pipe       arguments...
   _read:      -> @out ._read      arguments...
   read:       -> @out .read       arguments...
@@ -198,11 +202,23 @@ class Pipeline
   getInnerPipes:     -> _.where @__pipelineInternalPipes, (pipe)-> pipe.name[0..9] isnt "__pipeline"
   get:(name)         -> @pipes[name]
 
-  debugMode:         (format)->
+  # get in/out reports from the pipeline on incoming / outgoing data. 
+  # You can format the data using your own function (data)-> return data
+  # to use it use debugMode:true or options: debugMode:(data)-> return data
+  debugMode:(format)->
+
     if !format? or format.constructor isnt Function
-      format = (data)-> data.toString()
-    @out.on 'data',    (data)=> console.log "#{format(data)} coming out of #{@__pipelineName or 'Pipeline'}"
-    @in.on 'data',     (data)=> console.log "#{format(data)} coming into   #{@__pipelineName or 'Pipeline'}"
+      format =         (data)-> data.toString()
+
+    @in.pipe through.obj  {}, (data, encoding, callback) => 
+      callback(null, data)
+      console.log "#{format(data)} coming into   #{@__pipelineName or 'Pipeline'}"
+    
+    @out.pipe through.obj {}, (data, encoding, callback) => 
+      callback(null, data)
+      console.log "#{format(data)} coming out of #{@__pipelineName or 'Pipeline'}"
+
+
 module.exports = Pipeline
 
 #### Helper methods

@@ -1,13 +1,14 @@
 
-class Stream extends require('through2').ctor({ objectMode: true, highWaterMark: 16 })
+class StorageStream extends require('through2').ctor({ objectMode: true, highWaterMark: 16 })
 _ = require('lodash')
 _.isStream = require('isStream')
 Pipeline = require('../../index.js')
 should = require('should')
 event_stream = require('event-stream')
-
+# Change this line to get in/out reports from the pipeline
+debug = false
 # A stream that stores all the data that has passed through it, for testing
-class StorageStream extends Stream
+class StorageStream extends StorageStream
   constructor:->
     super
     @stored = []
@@ -21,65 +22,72 @@ describe "Pipeline", ->
 
   beforeEach ->
     pipeline = new Pipeline
-      source:  new Stream()
-      step1:   new Stream()
-      step2:   new Stream()
+      source:  new StorageStream()
+      step1:   new StorageStream()
+      step2:   new StorageStream()
+      options:
+        debugMode:debug
 
   it "Creates a pipeline", (done)->
-    
-    pipeline.pipes.step2.on 'data', (data)->
-      data.should.equal 1
-      done()
 
     pipeline.write 1
 
+    _.delay ->
+      pipeline.pipes.source.stored.should.eql [1]
+      done()
+
   it "Adds pipes at any time", (done)->
     
-    pipeline.add step3:new Stream()
+    pipeline.add step3:new StorageStream()
 
-    pipeline.pipes.step3.on 'data', (data)->
-      data.should.equal 2
-      done()
     
     pipeline.write 2
+
+    _.delay ->
+      pipeline.pipes.step3.stored.should.eql [2]
+      done()
 
   it "Supports objects, and creates a branching pipeline from them", (done)->
 
     pipeline.add 
       branch:
-        step1: new Stream()
-        step2: new Stream()
+        step1: new StorageStream()
+        step2: new StorageStream()
+        options:
+          debugMode:debug
 
     branch = pipeline.pipes.branch
 
-    branch.pipes.step1.on 'data', (data)->
-      data.should.equal 3
+    pipeline.write 3
+
+    _.delay ->
+      branch.pipes.step1.stored.should.eql [3]
       done()
 
-    pipeline.write 3
 
 
   it "Supports functions", (done)->
 
     pipeline.add
       branch:
-        step1:-> new Stream()
-        step2:-> new Stream()
+        step1:-> new StorageStream()
+        step2:-> new StorageStream()
 
     branch = pipeline.pipes.branch
 
-    branch.pipes.step1.on 'data', (data)->
-      data.should.equal 4
+    pipeline.write 4
+
+    _.delay ->
+      branch.pipes.step1.stored.should.eql [4]
       done()
 
-    pipeline.write 4
 
   it "Can remove any step and automatically patch the leak", (done)->
 
     pipeline.remove("step1")
 
-    pipeline.pipes.step2.on 'data', (data)->
-      data.should.equal 5
+    _.delay ->
+      pipeline.pipes.step2.stored.should.eql [5]
       done()
 
     pipeline.write 5
@@ -88,16 +96,16 @@ describe "Pipeline", ->
 
     done = _.after 3, reallyDone
 
-    stream = new Stream()
+    stream = new StorageStream()
 
-    pipeline.pipes.source.on 'data', (data)->
-      data.should.equal 1
+    _.delay ->
+      pipeline.pipes.source.stored.should.eql [1]
       done()
 
-    pipeline.pipe stream 
+    pipeline.pipe stream
 
-    stream.on 'data', (data)->
-      data.should.equal 1
+    _.delay ->
+      stream.stored.should.eql [1]
       done()
       
     pipeline.write 1
@@ -123,9 +131,10 @@ describe "Pipeline", ->
 
     pipeline.add
       branch:
-        step1:    new Stream()
-        step2:    new Stream()
+        step1:    new StorageStream()
+        step2:    new StorageStream()
         options:
+          debugMode:debug
           dontFork: true
       after:      new StorageStream()
 
