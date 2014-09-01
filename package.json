@@ -1,6 +1,6 @@
 {
   "name": "pipeline",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Sewage should be pleasant",
   "main": "index.js",
   "scripts": {
@@ -28,9 +28,9 @@
     "coffee-script": "~1.7.1",
     "through2": "~0.6.1",
     "event-stream": "~3.1.7",
-    "isstream": "~0.1.0",
     "lodash": "~2.4.1",
     "mocha": "~1.21.4",
-    "should": "~4.0.4"
+    "should": "~4.0.4",
+    "type-checking": "~1.0.1"
   }
 }

@@ -7,7 +7,7 @@
 # *lodash
 
 EventEmitter =       require('events').EventEmitter
-isStream     =       require('isstream')
+isStream     =       require('./isStream.coffee')
 _            =       require('lodash')
 _.isStream   =       isStream
 through      =       require('through2')
@@ -77,7 +77,7 @@ class Pipeline
     
     else if typeof names is Array
       for name in names
-        @_removeSingle(name)
+        @_removeSingle name
 
     return @
     

@@ -1,7 +1,7 @@
 
 class StorageStream extends require('through2').ctor({ objectMode: true, highWaterMark: 16 })
 _ = require('lodash')
-_.isStream = require('isStream')
+_.isStream = require('../isStream.coffee')
 Pipeline = require('../../index.js')
 should = require('should')
 event_stream = require('event-stream')
