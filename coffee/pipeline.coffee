@@ -84,8 +84,8 @@ class Pipeline
   # Add a stream before @in
   addSource:({name, stream})->
 
-    throw new Error("Source #{name} must be a stream") unless isStream(stream)
-    throw new Error("Source #{name} must be readable") unless isReadable(stream)
+    throw @error("Source #{name} must be a stream") unless isStream(stream)
+    throw @error("Source #{name} must be readable") unless isReadable(stream)
     
     @sources[name] = stream
 
@@ -101,13 +101,15 @@ class Pipeline
 
     lastPipe = @getLastPipe()
 
-    throw new Error("Pipe #{name} must be a stream")                            unless isStream(stream)
-    throw new Error("Pipe #{name} must be a writable stream")                   unless isWritable(stream)
-    throw new Error("Pipe #{lastPipe.name} must be a 
-                       readable stream to pipe into #{name}")                   unless isReadable(lastPipe.stream)
-    console.log "Warning: pipe #{name} isn't readable. This may lead to errors" unless isReadable(stream)
+    throw @error("Pipe #{name} must be a stream")                                             unless isStream(stream)
+    throw @error("Pipe #{name} must be a writable stream")                                    unless isWritable(stream)
+    throw @error("Pipe #{lastPipe.name} must be a 
+                       readable stream to pipe into #{name}")                                 unless isReadable(lastPipe.stream)
+    console.log "Warning: pipe #{name} isn't readable. This may lead to errors"               unless isReadable(stream)
 
     pipe from:lastPipe.stream, to:stream unless options.breakUpstream
+
+    throw @error("Pipe #{lastPipe.name} must be able to unpipe, if it is not a final stream") unless lastPipe.stream.unpipe?
 
     if !options.breakDownstream
       unpipe from:lastPipe.stream, to:@out
@@ -127,6 +129,10 @@ class Pipeline
 
     childPipeline = new Pipeline(pipelineDescriptorObject)
     
+    @pipes[name]                      = childPipeline
+    childPipeline["__pipelineParent"] = @
+    childPipeline["__pipelineName"]   = name
+    
     if childPipeline.options.dontFork
 
       @_addStream 
@@ -144,9 +150,6 @@ class Pipeline
       lastPipe = @getLastPipe()  
       childPipeline.addSource name:"__pipelineParentSource", stream:lastPipe.stream    
       
-    @pipes[name]                      = childPipeline
-    childPipeline["__pipelineParent"] = @
-    childPipeline["__pipelineName"]   = name
     return @
 
   removeSource:(name)->
@@ -184,6 +187,7 @@ class Pipeline
 
     return @
 
+
   # Delegate stream related functions to in and out streams
   once:       -> @in  .once       arguments...
   write:      -> @in  .write      arguments...
@@ -219,6 +223,9 @@ class Pipeline
       callback(null, data)
       console.log "#{format(data)} coming out of #{@__pipelineName or 'Pipeline'}"
 
+  error:(string)-> 
+    string = (if @__pipelineName then "#{@__pipelineName}: " else "") + string
+    new Error(string)
 
 module.exports = Pipeline
 
