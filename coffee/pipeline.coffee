@@ -107,16 +107,14 @@ class Pipeline
     throw @error("Pipe #{lastPipe.name} must be a 
                        readable stream to pipe into #{name}")                                 unless isReadable(lastPipe.stream)
     console.log "Warning: pipe #{name} isn't readable. This may lead to errors"               unless isReadable(stream)
+    throw @error("Pipe #{lastPipe.name} must be able to unpipe, if it is not a final stream") unless lastPipe.stream.unpipe?
 
     pipe from:lastPipe.stream, to:stream unless options.breakUpstream
 
-    throw @error("Pipe #{lastPipe.name} must be able to unpipe, if it is not a final stream") unless lastPipe.stream.unpipe?
-
     if !options.breakDownstream
-      unpipe from:lastPipe.stream, to:@out
-      pipe   from:stream,          to:@out
-    else
-      unpipe from:lastPipe.stream, to:@out
+      pipe from:stream,          to:@out
+
+    unpipe from:lastPipe.stream, to:@out
 
     @__pipelineInternalPipes.push name:name, stream:stream
 
