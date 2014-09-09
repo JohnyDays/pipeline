@@ -115,7 +115,6 @@ describe "Pipeline", ->
     pipeline.end()
 
 
-
   it "Supports special options defined as booleans or in the options object", ->
 
     pipeline.add
@@ -138,17 +137,123 @@ describe "Pipeline", ->
           dontFork: true
       after:      new StorageStream()
 
-    pipeline.write 5
+    default_pipeline.write 5
     
     _.delay ->
 
-      pipeline.pipes.after.stored.should.eql [5]
+      default_pipeline.pipes.coffee.end()
 
-      pipeline.pipes.branch.write 5
+      i = 0
+      setInterval ->
+        default_pipeline.out.write(i++)
+      , 1
 
-      _.delay ->
 
-        pipeline.pipes.after.stored.should.eql [5,5]
-        done()
 
+destination = -> 
+  stream = new StorageStream() 
+  stream.pipe new StorageStream()
+  return stream
+
+# Describes the flow through which files pass
+default_pipeline = new Pipeline
+
+  plumber:             new StorageStream()
+
+  only_files:          new StorageStream()
+
+  javascript:
+
+    filter:            new StorageStream()
+
+    sourcemaps_start:  new StorageStream()
+
+    to_module:
+
+      indent:          new StorageStream()
+      
+      wrap:            new StorageStream()
+
+      options:
+        debugMode:true
+        dontFork:true
+
+    filenames:         new StorageStream()
+
+    sourcemaps_end:    new StorageStream()
+
+    log:               new StorageStream()
+    options:
+      debugMode:true
+
+  coffee:
+
+    filter:            new StorageStream()
+
+    sourcemaps_start:  new StorageStream()
+
+    to_module:
+      
+      filter:            new StorageStream()
+
+      indent:            new StorageStream()
+    
+      wrap:              new StorageStream()
+
+      options:  
+        debugMode:true
+        dontFork:true
+
+
+    plumber:           new StorageStream()
+    
+
+    javascript_filter: new StorageStream()
+
+    filenames:         new StorageStream()
+
+    sourcemaps_end:    new StorageStream()
+
+    log:               new StorageStream()
+    options:
+      debugMode:true
+
+  sass:
+
+    filter:            new StorageStream()
+
+    options:
+      debugMode:true
+
+  css:
+
+    filter:            new StorageStream()
+
+    filenames:         new StorageStream()
+
+    log:               new StorageStream()
+    options:
+      debugMode:true
+
+  extras:
+
+    filter:            new StorageStream()
+    
+    log:               new StorageStream()
+
+    options:
+      debugMode:true
+  filter_everything:   new StorageStream()
+
+  everything:          ->
+
+    stream = new StorageStream()
+    @pipes.coffee                 .pipe stream, end:false
+    @pipes.javascript             .pipe stream, end:false
+    @pipes.sass                   .pipe stream, end:false
+    @pipes.css                    .pipe stream, end:false
+    @pipes.extras                 .pipe stream, end:false
+    return stream
+  options:
+    debugMode:true
 
