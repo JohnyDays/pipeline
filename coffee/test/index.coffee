@@ -6,7 +6,7 @@ Pipeline = require('../../index.js')
 should = require('should')
 event_stream = require('event-stream')
 # Change this line to get in/out reports from the pipeline
-debug = false
+debug = true
 # A stream that stores all the data that has passed through it, for testing
 class StorageStream extends StorageStream
   constructor:->
@@ -17,8 +17,8 @@ class StorageStream extends StorageStream
     @stored.push content
 
 describe "Pipeline", ->
-  
-  pipeline = null 
+
+  pipeline = null
 
   beforeEach ->
     pipeline = new Pipeline
@@ -37,10 +37,10 @@ describe "Pipeline", ->
       done()
 
   it "Adds pipes at any time", (done)->
-    
+
     pipeline.add step3:new StorageStream()
 
-    
+
     pipeline.write 2
 
     _.delay ->
@@ -49,7 +49,7 @@ describe "Pipeline", ->
 
   it "Supports objects, and creates a branching pipeline from them", (done)->
 
-    pipeline.add 
+    pipeline.add
       branch:
         step1: new StorageStream()
         step2: new StorageStream()
@@ -107,12 +107,13 @@ describe "Pipeline", ->
     _.delay ->
       stream.stored.should.eql [1]
       done()
-      
+
     pipeline.write 1
 
-    pipeline.out.on 'finish', -> done() 
-    
+    pipeline.out.on 'finish', -> done()
+
     pipeline.end()
+
 
 
   it "Supports special options defined as booleans or in the options object", ->
@@ -123,7 +124,7 @@ describe "Pipeline", ->
     pipeline.options.test_option.should.equal true
 
     pipeline = new Pipeline options: test_option:true
-    
+
     pipeline.options.test_option.should.equal true
 
   it "Supports non-forking branches", (done)->
@@ -137,123 +138,15 @@ describe "Pipeline", ->
           dontFork: true
       after:      new StorageStream()
 
-    default_pipeline.write 5
-    
+    pipeline.write 5
+
     _.delay ->
 
-      default_pipeline.pipes.coffee.end()
+      pipeline.pipes.after.stored.should.eql [5]
 
-      i = 0
-      setInterval ->
-        default_pipeline.out.write(i++)
-      , 1
+      pipeline.pipes.branch.write 5
 
+      _.delay ->
 
-
-destination = -> 
-  stream = new StorageStream() 
-  stream.pipe new StorageStream()
-  return stream
-
-# Describes the flow through which files pass
-default_pipeline = new Pipeline
-
-  plumber:             new StorageStream()
-
-  only_files:          new StorageStream()
-
-  javascript:
-
-    filter:            new StorageStream()
-
-    sourcemaps_start:  new StorageStream()
-
-    to_module:
-
-      indent:          new StorageStream()
-      
-      wrap:            new StorageStream()
-
-      options:
-        debugMode:true
-        dontFork:true
-
-    filenames:         new StorageStream()
-
-    sourcemaps_end:    new StorageStream()
-
-    log:               new StorageStream()
-    options:
-      debugMode:true
-
-  coffee:
-
-    filter:            new StorageStream()
-
-    sourcemaps_start:  new StorageStream()
-
-    to_module:
-      
-      filter:            new StorageStream()
-
-      indent:            new StorageStream()
-    
-      wrap:              new StorageStream()
-
-      options:  
-        debugMode:true
-        dontFork:true
-
-
-    plumber:           new StorageStream()
-    
-
-    javascript_filter: new StorageStream()
-
-    filenames:         new StorageStream()
-
-    sourcemaps_end:    new StorageStream()
-
-    log:               new StorageStream()
-    options:
-      debugMode:true
-
-  sass:
-
-    filter:            new StorageStream()
-
-    options:
-      debugMode:true
-
-  css:
-
-    filter:            new StorageStream()
-
-    filenames:         new StorageStream()
-
-    log:               new StorageStream()
-    options:
-      debugMode:true
-
-  extras:
-
-    filter:            new StorageStream()
-    
-    log:               new StorageStream()
-
-    options:
-      debugMode:true
-  filter_everything:   new StorageStream()
-
-  everything:          ->
-
-    stream = new StorageStream()
-    @pipes.coffee                 .pipe stream, end:false
-    @pipes.javascript             .pipe stream, end:false
-    @pipes.sass                   .pipe stream, end:false
-    @pipes.css                    .pipe stream, end:false
-    @pipes.extras                 .pipe stream, end:false
-    return stream
-  options:
-    debugMode:true
-
+        pipeline.pipes.after.stored.should.eql [5,5]
+        done()

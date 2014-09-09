@@ -10,8 +10,11 @@ EventEmitter =       require('events').EventEmitter
 isStream     =       require('./isStream.coffee')
 _            =       require('lodash')
 _.isStream   =       isStream
-through      =       require('through2')
-class Stream extends through.ctor(objectMode: true, highWaterMark: 16)
+
+class Stream extends require('through2').ctor(objectMode: true, highWaterMark: 0)
+  constructor:(_transform)->
+    super
+    @_transform = _transform if _transform?
 
 # Reserved Keywords:
 # * options
@@ -34,7 +37,7 @@ class Pipeline
     delete                           streams.options
     
     @debugMode(@options.debugMode) if @options.debugMode
-    
+
     @add(streams)
 
 
@@ -47,19 +50,19 @@ class Pipeline
           @_addStream   name:key, stream:value, options:options
       else if _.isFunction(value)
         functionResult = value.apply(@, [@pipes])
-        
+
         if isStream(functionResult)
           @_addStream   name:key, stream:functionResult, options:options
-        
+
         else if _.isObject(functionResult)
           @_addPipeline name:key, pipelineDescriptorObject:functionResult, options:options
-        
+
         else if _.isBoolean(functionResult)
           @options[key] = functionResult
 
       else if _.isObject(value)
           @_addPipeline   name:key, pipelineDescriptorObject:value, options:options
-          
+
       else if _.isBoolean(value)
           @options[key] = value
 
@@ -67,44 +70,44 @@ class Pipeline
         throw new Error("Pipeline accepts streams, functions and objects as values only, key #{key} was none of those")
 
     return @
-    
+
 
 
   # Removes any number of pipes from the pipeline and patches the leaks
   remove:(names = [])->
-    
+
     if typeof names is String
         @_removeSingle names
-    
+
     else if typeof names is Array
       for name in names
         @_removeSingle name
 
     return @
-    
+
   # Add a stream before @in
   addSource:({name, stream})->
 
     throw @error("Source #{name} must be a stream") unless isStream(stream)
     throw @error("Source #{name} must be readable") unless isReadable(stream)
-    
+
     @sources[name] = stream
 
     stream.pipe @in
 
     return @
 
-  ## Internal, but you can extend them easily  
+  ## Internal, but you can extend them easily
   # Adds a single pipe
   _addStream:({name, stream, options})->
-    
+
     stream.__pipelineName = name
 
     lastPipe = @getLastPipe()
 
     throw @error("Pipe #{name} must be a stream")                                             unless isStream(stream)
     throw @error("Pipe #{name} must be a writable stream")                                    unless isWritable(stream)
-    throw @error("Pipe #{lastPipe.name} must be a 
+    throw @error("Pipe #{lastPipe.name} must be a
                        readable stream to pipe into #{name}")                                 unless isReadable(lastPipe.stream)
     console.log "Warning: pipe #{name} isn't readable. This may lead to errors"               unless isReadable(stream)
     throw @error("Pipe #{lastPipe.name} must be able to unpipe, if it is not a final stream") unless lastPipe.stream.unpipe?
@@ -127,32 +130,32 @@ class Pipeline
   _addPipeline:({name, pipelineDescriptorObject})->
 
     childPipeline = new Pipeline(pipelineDescriptorObject)
-    
+
     @pipes[name]                      = childPipeline
     childPipeline["__pipelineParent"] = @
     childPipeline["__pipelineName"]   = name
-    
+
     if childPipeline.options.dontFork
 
-      @_addStream 
+      @_addStream
         name:    "__pipeline#{name}In"
         stream:  childPipeline.in
         options: breakDownstream:true
 
-      @_addStream 
+      @_addStream
         name:    "__pipeline#{name}Out"
         stream:  childPipeline.out
         options: breakUpstream:true
 
     else
 
-      lastPipe = @getLastPipe()  
-      childPipeline.addSource name:"__pipelineParentSource", stream:lastPipe.stream    
-      
+      lastPipe = @getLastPipe()
+      childPipeline.addSource name:"__pipelineParentSource", stream:lastPipe.stream
+
     return @
 
   removeSource:(name)->
-  
+
     @sources[name].stream.unpipe @in
 
     delete @sources[name]
@@ -161,13 +164,13 @@ class Pipeline
 
   # Removes a single pipe from the pipeline and patches the leaks
   _removeSingle:(name)->
-    
+
     index = _.findIndex @__pipelineInternalPipes,         (item)-> item.name is name
-    
+
     pipe_to_remove =    @__pipelineInternalPipes[index]   ?.stream
 
     pipe_before =       @__pipelineInternalPipes[index-1] ?.stream
-    
+
     pipe_after =        @__pipelineInternalPipes[index+1] ?.stream
 
     if pipe_before?
@@ -177,7 +180,7 @@ class Pipeline
       pipe_to_remove.unpipe pipe_after
 
     if pipe_before? and pipe_after?
-      pipe  from: pipe_before 
+      pipe  from: pipe_before
             to:   pipe_after.stream
 
     # TODO: Rearrange pipes in order to not have a sparse index
@@ -210,7 +213,7 @@ class Pipeline
   getInnerPipes:     -> _.where @__pipelineInternalPipes, (pipe)-> pipe.name[0..9] isnt "__pipeline"
   get:(name)         -> @pipes[name]
 
-  # get in/out reports from the pipeline on incoming / outgoing data. 
+  # get in/out reports from the pipeline on incoming / outgoing data.
   # You can format the data using your own function (data)-> return data
   # to use it use debugMode:true or options: debugMode:(data)-> return data
   debugMode:(format)->
@@ -218,15 +221,15 @@ class Pipeline
     if !format? or format.constructor isnt Function
       format = (data)-> data.toString()
 
-    @in.pipe through.obj  {}, (data, encoding, callback) => 
+    @in.pipe new Stream (data, encoding, callback) =>
       callback(null, data)
       console.log "#{format(data)} coming into   #{@__pipelineName or 'Pipeline'}"
-    
-    @out.pipe through.obj {}, (data, encoding, callback) => 
+
+    @out.pipe new Stream (data, encoding, callback) =>
       callback(null, data)
       console.log "#{format(data)} coming out of #{@__pipelineName or 'Pipeline'}"
 
-  error:(string)-> 
+  error:(string)->
     string = (if @__pipelineName then "#{@__pipelineName}: " else "") + string
     new Error(string)
 
