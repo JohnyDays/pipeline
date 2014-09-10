@@ -103,7 +103,8 @@ class Pipeline
 
     stream.__pipelineName = name
     # Allow the streams to go on forever
-    stream._readableState.highWaterMark = stream._writableState.highWaterMark = Infinity
+    stream._readableState?.highWaterMark = Infinity 
+    stream._writableState?.highWaterMark = Infinity
 
     lastPipe = @getLastPipe()
 
