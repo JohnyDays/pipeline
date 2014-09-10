@@ -11,9 +11,11 @@ isStream     =       require('./isStream.coffee')
 _            =       require('lodash')
 _.isStream   =       isStream
 
-class Stream extends require('through2').ctor(objectMode: true, highWaterMark: Infinity)
+class Stream extends require('through2').ctor(objectMode: true)
   constructor:(_transform)->
     super
+    @_readableState.highWaterMark = Infinity
+    @_writableState.highWaterMark = Infinity
     @_transform = _transform if _transform?
 
 # Reserved Keywords:
