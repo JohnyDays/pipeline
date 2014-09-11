@@ -11,9 +11,11 @@ isStream     =       require('./isStream.coffee')
 _            =       require('lodash')
 _.isStream   =       isStream
 
-class Stream extends require('through2').ctor(objectMode: true, highWaterMark: 0)
+class Stream extends require('through2').ctor(objectMode: true)
   constructor:(_transform)->
     super
+    @_readableState.highWaterMark = Infinity
+    @_writableState.highWaterMark = Infinity
     @_transform = _transform if _transform?
 
 # Reserved Keywords:
@@ -102,6 +104,9 @@ class Pipeline
   _addStream:({name, stream, options})->
 
     stream.__pipelineName = name
+    # Allow the streams to go on forever
+    stream._readableState?.highWaterMark = Infinity 
+    stream._writableState?.highWaterMark = Infinity
 
     lastPipe = @getLastPipe()
 

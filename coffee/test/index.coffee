@@ -1,12 +1,12 @@
 
-class StorageStream extends require('through2').ctor({ objectMode: true, highWaterMark: 16 })
+class StorageStream extends require('through2').ctor({ objectMode: true, highWaterMark: Infinity })
 _ = require('lodash')
 _.isStream = require('../isStream.coffee')
 Pipeline = require('../../index.js')
 should = require('should')
 event_stream = require('event-stream')
 # Change this line to get in/out reports from the pipeline
-debug = true
+debug = false
 # A stream that stores all the data that has passed through it, for testing
 class StorageStream extends StorageStream
   constructor:->
